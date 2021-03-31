@@ -47,4 +47,4 @@ If your system doesn't have access to the Internet, please download a reference 
 
 ## Upload
 
-Please upload all the `.png` files and `.projected.pca.tsv.gz` file to the google bucket of your biobank. Detailed instruction can be found **[https://docs.google.com/document/d/1nLe4o0nZ9DOzZufuYlHZuU3VBiHGC3rcJgMBkjpeHIk/edit?usp=sharing]**
+Please upload all the `.png` files and `.projected.pca.tsv.gz` file to the google bucket of your biobank. Detailed instruction can be found **[https://docs.google.com/document/d/1nLe4o0nZ9DOzZufuYlHZuU3VBiHGC3rcJgMBkjpeHIk/edit?usp=sharing]** and the google bucket information can be found **https://docs.google.com/spreadsheets/d/1dO4J_zzvRY37ErStS1VVcZfJvkz-6WOJ7sqOZfvtl-c/edit?usp=sharing**
