@@ -8,7 +8,7 @@ set -eu
 STUDY_NAME=""
 ANALYST_LAST_NAME=""
 DATE="$(date +'%Y%m%d')"
-OUTNAME="${STUDY_NAME}.${ANALYST_LAST_NAME}.${DATE}"
+OUTNAME="${BIOBANK_NAME}.${ANALYST_LAST_NAME}.${DATE}"
 ################################################################################
 # Location of downloaded input files
 PCA_LOADINGS=""
