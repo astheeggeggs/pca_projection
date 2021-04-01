@@ -119,7 +119,7 @@ main <- function(args) {
 
   # Load reference score
   message(sprintf("Loading --reference-score-file %s", args$reference_score_file))
-  reference_score <- data.table::fread(args$reference_score_file)
+  reference_score <- data.table::fread(paste0("zcat ", args$reference_score_file))
   reference_range <-
     purrr::map(plot_pcs, function(pc) {
       range(reference_score[[pc]])
@@ -329,7 +329,7 @@ option_list <- list(
   optparse::make_option(
     "--reference-score-file",
     type = "character",
-    help = "Path to a reference score file [Required if your system doesn't have the Internet access]",
+    help = "https://storage.googleapis.com/gbmi-public/hgdp_tgp_pca_gbmi_snps_scores.txt.bgz",
     dest = "reference_score_file"
   ),
   optparse::make_option(
