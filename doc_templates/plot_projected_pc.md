@@ -2,6 +2,8 @@
 
 Once `project_pc.sh` finished, please run `Rscript plot_projected_pc.R` to plot all the projected PCs. This script also generates a text file containing per-sample projected PCs **without including biobank-specific individual IDs**.
 
+If PLINK2 was used to project pcs please revise the header of the .sscore file by changing "PC1_SUM" to "PC1",  "PC2_SUM" to "PC2", etc. 
+
 ## Required packages
 
 To run the script, please install the following packages.
