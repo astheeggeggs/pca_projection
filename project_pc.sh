@@ -5,7 +5,7 @@ set -eu
 # Please fill in the below variables
 ################################################################################
 # Metadata
-STUDY_NAME=""
+BIOBANK_NAME=""
 ANALYST_LAST_NAME=""
 DATE="$(date +'%Y%m%d')"
 OUTNAME="${BIOBANK_NAME}.${ANALYST_LAST_NAME}.${DATE}"
