@@ -18,7 +18,7 @@ install.packages(c("data.table", "hexbin", "optparse", "patchwork", "R.utils", "
 Rscript plot_projected_pc.R \
   --sscore [path to .sscore output] \
   --phenotype-file [path to phenotype file] \
-  --phenotype-col [phenotype column name]
+  --phenotype-col [phenotype column name] \
   --covariate-file [path to covariate file] \
   --pc-prefix [prefix of PC columns: default "PC"] \
   --pc-num [number of PCs used in GWAS] \
