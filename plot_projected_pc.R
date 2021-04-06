@@ -329,7 +329,7 @@ option_list <- list(
   optparse::make_option(
     "--reference-score-file",
     type = "character",
-    help = "https://storage.googleapis.com/gbmi-public/hgdp_tgp_pca_gbmi_snps_scores.txt.bgz",
+    help = "https://storage.googleapis.com/gbmi-public/hgdp_tgp_pca_gbmi_snps_scores.txt.gz",
     dest = "reference_score_file"
   ),
   optparse::make_option(
