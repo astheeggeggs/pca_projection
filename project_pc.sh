@@ -29,7 +29,7 @@ function error_exit() {
 }
 
 # Input checks
-if [[ -z "${STUDY_NAME}" ]]; then
+if [[ -z "${BIOBANK_NAME}" ]]; then
   error_exit "Please specify \$STUDY_NAME."
 fi
 
