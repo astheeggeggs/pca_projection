@@ -18,17 +18,17 @@ We provide variant IDs in three formats: 1) `chromosome:position:ref:alt` in GRC
 
 ### GRCh37
 
-- Pre-compmuted PCA loadings: **[https://drive.google.com/file/d/1VN0uZFLp75bo6s2TyIFsVWO2vAhNMmYY/view?usp=sharing]**
+- Pre-computed PC loadings: **[https://drive.google.com/file/d/1VN0uZFLp75bo6s2TyIFsVWO2vAhNMmYY/view?usp=sharing]**
 - Reference allele frequencies: **[https://drive.google.com/file/d/1Ba9aWDRD4V9Po-qSqvteG6t6ekQt-o_P/view?usp=sharing]**
 
 ### GRCh38
 
-- Pre-compmuted PCA loadings: **[https://drive.google.com/file/d/1OksYnA7RpCrppsIul8BKan-jTdtes-7F/view?usp=sharing]**
+- Pre-computed PC loadings: **[https://drive.google.com/file/d/1OksYnA7RpCrppsIul8BKan-jTdtes-7F/view?usp=sharing]**
 - Reference allele frequencies: **[https://drive.google.com/file/d/1pdEB8CgTzJtL0y3D6RELEF9_Ah38eikh/view?usp=sharing]**
 
 ### rsid
 
-- Pre-compmuted PCA loadings: **[https://drive.google.com/file/d/1EMLCT7b8327pauoaYAkd9uRSUGJg3dib/view?usp=sharing]**
+- Pre-computed PC loadings: **[https://drive.google.com/file/d/1EMLCT7b8327pauoaYAkd9uRSUGJg3dib/view?usp=sharing]**
 - Reference allele frequencies: **[https://drive.google.com/file/d/1PaM0r2MQSSq90bJlW6ywpEQFbYmegYFw/view?usp=sharing]**
 
 ### For advanced users: Hail format
