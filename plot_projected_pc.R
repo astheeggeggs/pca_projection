@@ -339,10 +339,6 @@ if (is.null(args$reference_score_file)) {
 # Only plot even number of cohort PCs
 args$plot_pc_num <- 2 * args$plot_pc_num %/% 2
 
-if (args$plot_pc_num %% 2 != 0) {
-  stop("Please specify an even number for --plot-pc-num")
-}
-
 if (is.null(args$out)) {
   stop("Please specify --out.")
 }
