@@ -48,7 +48,8 @@ get_pop_colors <- function(pop = NULL) {
     NFE = color_nfe,
     SAS = color_sas,
     cases = color_cases,
-    controls = color_controls
+    controls = color_controls,
+    Reference = "gray60"
   )
 
   if (!is.null(pop)) {
@@ -63,7 +64,8 @@ plot_pca <- function(dataset, first_pc, second_pc, color_pop, xlim = NULL, ylim 
   pc_biplot <-
     dplyr::arrange(dataset, !!as.symbol(color_pop)) %>%
     ggplot(aes_string(x = first_pc, y = second_pc, color = color_pop)) +
-    geom_point(alpha = 0.2) +
+    geom_point(data = dataset %>% filter(!!color_pop == "Reference"), color = "gray60", alpha = 0.2) +
+    geom_point(data = dataset %>% filter(!!color_pop != "Reference"), alpha = 0.2) +
     guides(color = guide_legend(override.aes = list(alpha = 1))) +
     plt_theme +
     scale_color_manual(values = get_pop_colors(), name = "Population", na.value = "grey50") +
@@ -113,8 +115,8 @@ save_plots <- function(plots, prefix, pc_num) {
   return(NULL)
 }
 
-
-main <- function(args) {
+main <- function(args)
+{
   plot_pcs <- paste0("PC", seq(args$plot_pc_num))
 
   # Load reference score
@@ -125,6 +127,8 @@ main <- function(args) {
       range(reference_score[[pc]])
     }) %>%
     magrittr::set_names(plot_pcs)
+  padding_percent_plot <- 20
+  scaling_range_plot <- 1 + padding_percent_plot/100
 
   # Load projected PCs
   message(sprintf("Loading --sscore %s", args$sscore))
@@ -142,17 +146,10 @@ main <- function(args) {
   # divide by sqrt(n_sscore_vars)
   projected_pc[, plot_pcs] <- projected_pc[, plot_pcs] / sqrt(n_sscore_vars)
 
-  # Load cohort PCs
-  message(sprintf("Loading --covariate-file %s", args$covariate_file))
-  cohort_pc <-
-    data.table::fread(args$covariate_file, colClasses = list(character = id_cols)) %>%
-    dplyr::select(id_cols, dplyr::starts_with(args$pc_prefix))
-  colnames(cohort_pc) <- gsub(paste0("^", args$pc_prefix), "PC", colnames(cohort_pc))
-
   # Load or set ancestry
   if (!is.null(args$ancestry)) {
     projected_pc <- dplyr::mutate(projected_pc, pop = args$ancestry)
-    cohort_pc <- dplyr::mutate(cohort_pc, pop = args$ancestry)
+    # cohort_pc <- dplyr::mutate(cohort_pc, pop = args$ancestry)
   } else {
     message(sprintf("Loading --ancestry-file %s", args$ancestry_file))
     ancestry <-
@@ -160,59 +157,44 @@ main <- function(args) {
       dplyr::rename(pop = !!as.symbol(args$ancestry_col)) %>%
       dplyr::select(id_cols, pop)
     projected_pc <- dplyr::left_join(projected_pc, ancestry)
-    cohort_pc <- dplyr::left_join(cohort_pc, ancestry)
+    # cohort_pc <- dplyr::left_join(cohort_pc, ancestry)
   }
 
-  # Load phenotype
-  message(sprintf("Loading --phenotype-file %s", args$phenotype_file))
-  pheno <-
-    data.table::fread(args$phenotype_file, colClasses = list(character = id_cols)) %>%
-    dplyr::rename(pheno = !!as.symbol(args$phenotype_col)) %>%
-    dplyr::select(id_cols, pheno) %>%
-    dplyr::mutate(
-      study = args$study,
-      pheno = factor(dplyr::case_when(
-        pheno == 1 ~ "cases",
-        pheno == 0 ~ "controls",
-        TRUE ~ NA_character_
-      ), levels = c("controls", "cases"))
-    )
+  if (!is.null(args$sequenced)) {
+    # Left join with the set of samples that have QCed sequencing data
+    seq <- data.table::fread(args$sequenced, colClasses = list(character = id_cols)) %>%
+      dplyr::select(id_cols)
+    # Only retain samples with sequence information
+    projected_pc <- dplyr::inner_join(projected_pc, seq)
+  }
 
-  # Only retain samples with phenotype
-  projected_pc <-
-    dplyr::left_join(projected_pc, pheno) %>%
-    tidyr::drop_na(pheno)
-
-  cohort_pc <-
-    dplyr::left_join(cohort_pc, pheno) %>%
-    tidyr::drop_na(pheno)
+  reference_score <- reference_score %>% mutate(IID = s, FID = s, pop = "Reference") %>% select(-s)
+  score_list <- list(reference = reference_score, projected = projected_pc)
+  projected_pc <- data.table::rbindlist(score_list, use.names=TRUE, fill=TRUE)
+  projected_pc$pop <- factor(projected_pc$pop,
+    levels = c("AFR", "AMR", "ASJ", "CSA", "EAS", "EUR", "FIN", "MDE", "MID", "NFE", "SAS", "Reference"))
 
   # Plot PC figures
   plot_all <- function(df, prefix, study, pc_num, reference_range = list()) {
     pcs <- paste0("PC", seq(pc_num))
     pca <-
       Reduce(`+`, c(apply(matrix(pcs, ncol = 2, byrow = TRUE), 1, function(pc) {
-        plot_pca(df, pc[1], pc[2], "pop", xlim = reference_range[[pc[1]]], ylim = reference_range[[pc[2]]])
+        plot_pca(df, pc[1], pc[2], "pop",
+          xlim = reference_range[[pc[1]]] * scaling_range_plot,
+          ylim = reference_range[[pc[2]]] * scaling_range_plot)
       }), list(patchwork::guide_area()))) +
       patchwork::plot_layout(ncol = 2, guides = "collect") +
       patchwork::plot_annotation(
-        title = sprintf("%s (by ancestry): # samples = %d, # variants = %d", study, nrow(df), n_sscore_vars),
-        theme = theme(plot.title = element_text(size = 8))
-      )
-
-    pca_case_control <-
-      Reduce(`+`, c(apply(matrix(pcs, ncol = 2, byrow = TRUE), 1, function(pc) {
-        plot_pca(df, pc[1], pc[2], "pheno", xlim = reference_range[[pc[1]]], ylim = reference_range[[pc[2]]])
-      }), list(patchwork::guide_area()))) +
-      patchwork::plot_layout(ncol = 2, guides = "collect") +
-      patchwork::plot_annotation(
-        title = sprintf("%s (by case/control): # samples = %d, # variants = %d", study, nrow(df), n_sscore_vars),
+        title = sprintf("%s (by ancestry): # samples = %d, # variants = %d",
+          study, nrow(df), n_sscore_vars),
         theme = theme(plot.title = element_text(size = 8))
       )
 
     pca_density <-
       Reduce(`+`, apply(matrix(pcs, ncol = 2, byrow = TRUE), 1, function(pc) {
-        plot_pca_density(df, pc[1], pc[2], xlim = reference_range[[pc[1]]], ylim = reference_range[[pc[2]]]) +
+        plot_pca_density(df, pc[1], pc[2],
+          xlim = reference_range[[pc[1]]] * scaling_range_plot,
+          ylim = reference_range[[pc[2]]] * scaling_range_plot) +
           theme(legend.position = "none")
       })) +
       patchwork::plot_layout(ncol = 2) +
@@ -222,7 +204,6 @@ main <- function(args) {
       )
 
     save_plots(pca, paste0(prefix, ".pca.ancestry"), pc_num)
-    save_plots(pca_case_control, paste0(prefix, ".pca.case_control"), pc_num)
     save_plots(
       pca_density,
       paste0(prefix, ".pca.density"),
@@ -238,7 +219,6 @@ main <- function(args) {
     pc_num = args$plot_pc_num,
     reference_range = reference_range
   )
-  plot_all(cohort_pc, paste0(args$out, ".cohort"), args$study, pc_num = args$pc_num)
 
   # Export per-sample PC values
   if (!args$disable_export) {
@@ -249,7 +229,6 @@ main <- function(args) {
   }
 
   warnings()
-
   message("Successfully finished!")
 }
 
@@ -271,6 +250,14 @@ option_list <- list(
     help = "Name of your study",
   ),
   optparse::make_option(
+    "--sequenced",
+    type = "character",
+    help = paste0("Path to the set of samples that were sequenced.",
+      "Note that this is included because often there are more genotyped samples (used to define PCs) ",
+      "than sequenced samples, so we need to filter to the set of sequenced samples.
+      Two columns (IID and FID), with a header.")
+  ),
+  optparse::make_option(
     "--ancestry",
     type = "character",
     help = "Continental ancestry of participants",
@@ -288,36 +275,11 @@ option_list <- list(
     dest = "ancestry_col"
   ),
   optparse::make_option(
-    "--phenotype-file",
-    type = "character",
-    help = "Path to a phenotype file",
-    dest = "phenotype_file"
-  ),
-  optparse::make_option(
-    "--phenotype-col",
-    type = "character",
-    help = "Name of case/control phenotype column",
-    dest = "phenotype_col"
-  ),
-  optparse::make_option(
-    "--covariate-file",
-    type = "character",
-    help = "Path to a covariate file",
-    dest = "covariate_file"
-  ),
-  optparse::make_option(
     "--pc-prefix",
     type = "character",
     default = "PC",
     help = "Prefix of PC columns",
     dest = "pc_prefix"
-  ),
-  optparse::make_option(
-    "--pc-num",
-    type = "integer",
-    default = 10,
-    help = "Number of PCs included in GWAS",
-    dest = "pc_num"
   ),
   optparse::make_option(
     "--plot-pc-num",
@@ -329,7 +291,7 @@ option_list <- list(
   optparse::make_option(
     "--reference-score-file",
     type = "character",
-    default = "https://storage.googleapis.com/covid19-hg-public/pca_projection/hgdp_tgp_pca_covid19hgi_snps_scores.txt.gz",
+    default = "https://storage.googleapis.com/gbmi-public/hgdp_tgp_pca_gbmi_snps_scores.txt.bgz",
     help = "Path to a reference score file [Required if your system doesn't have the Internet access]",
     dest = "reference_score_file"
   ),
@@ -351,7 +313,7 @@ args <- optparse::parse_args(optparse::OptionParser(option_list = option_list))
 
 # Input check
 if (is.null(args$sscore)) {
-  stop("Please specifify --sscore.")
+  stop("Please specify --sscore.")
 }
 
 if (is.null(args$study)) {
@@ -366,16 +328,8 @@ if (is.null(args$sscore_vars)) {
   args$sscore_vars <- fname
 }
 
-if (is.null(args$covariate_file)) {
-  stop("Please specifify --covariate-file.")
-}
-
 if (is.null(args$ancestry) & (is.null(args$ancestry_file) | is.null(args$ancestry_col))) {
   stop("Please specify either --ancestry or --ancestry-file and --ancestry-col.")
-}
-
-if (is.null(args$phenotype_file) | is.null(args$phenotype_col)) {
-  stop("Please specifiy --phenotype-file and --phenotype-col.")
 }
 
 if (is.null(args$reference_score_file)) {
@@ -383,14 +337,14 @@ if (is.null(args$reference_score_file)) {
 }
 
 # Only plot even number of cohort PCs
-args$pc_num <- 2 * args$pc_num %/% 2
+args$plot_pc_num <- 2 * args$plot_pc_num %/% 2
 
 if (args$plot_pc_num %% 2 != 0) {
   stop("Please specify an even number for --plot-pc-num")
 }
 
 if (is.null(args$out)) {
-  stop("Please specifify --out.")
+  stop("Please specify --out.")
 }
 
 message("Started running with the following args:")
