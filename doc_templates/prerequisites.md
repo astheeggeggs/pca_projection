@@ -31,12 +31,6 @@ We provide variant IDs in three formats: 1) `chromosome:position:ref:alt` in GRC
 - Pre-computed PC loadings: **[https://drive.google.com/file/d/1EMLCT7b8327pauoaYAkd9uRSUGJg3dib/view?usp=sharing]**
 - Reference allele frequencies: **[https://drive.google.com/file/d/1PaM0r2MQSSq90bJlW6ywpEQFbYmegYFw/view?usp=sharing]**
 
-### For advanced users: Hail format
-
-For advanced users, we also provide the files in Hail format here: **[PATH]**.
-
-Please refer to [our example script](../hail_project_pc.py) and [the Hail documentation](https://hail.is/) for further information.
-
 ## Prepare imputed dosages in PLINK2 format
 
 If you have imputed dosage files split by chromosome, you need to combine them first before using it with `plink2 --score`. Please refer to [PLINK 2’s documentation](https://www.cog-genomics.org/plink/2.0/input) for more information. Depending on which file format you have, please use the following commands to 1) extract the relevant set of variants for each chromosome, and 2) merge them in PLINK 2 binary format for downstream processing.
