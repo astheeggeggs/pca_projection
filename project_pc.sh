@@ -61,6 +61,6 @@ plink2 \
   cols=-scoreavgs,+scoresums \
   list-variants \
   header-read \
-  --score-col-nums 3-12 \
+  --score-col-nums 3-22 \
   --read-freq ${PCA_AF} \
   --out ${OUTNAME}
