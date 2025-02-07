@@ -49,7 +49,8 @@ get_pop_colors <- function(pop = NULL) {
     SAS = color_sas,
     cases = color_cases,
     controls = color_controls,
-    Reference = "gray60"
+    Reference = "gray60",
+    Remaining = "gray60"
   )
 
   if (!is.null(pop)) {
@@ -64,8 +65,8 @@ plot_pca <- function(dataset, first_pc, second_pc, color_pop, xlim = NULL, ylim 
   pc_biplot <-
     dplyr::arrange(dataset, !!as.symbol(color_pop)) %>%
     ggplot(aes_string(x = first_pc, y = second_pc, color = color_pop)) +
-    geom_point(data = dataset %>% filter(!!color_pop == "Reference"), color = "gray60", alpha = 0.2) +
-    geom_point(data = dataset %>% filter(!!color_pop != "Reference"), alpha = 0.2) +
+    geom_point(data = dataset %>% filter(!!color_pop %in% c("Reference", "Remaining")), color = "gray60", alpha = 0.2) +
+    geom_point(data = dataset %>% filter(!(!!color_pop %in% c("Reference", "Remaining"))), alpha = 0.2) +
     guides(color = guide_legend(override.aes = list(alpha = 1))) +
     plt_theme +
     scale_color_manual(values = get_pop_colors(), name = "Population", na.value = "grey50") +
@@ -149,7 +150,6 @@ main <- function(args)
   # Load or set ancestry
   if (!is.null(args$ancestry)) {
     projected_pc <- dplyr::mutate(projected_pc, pop = args$ancestry)
-    # cohort_pc <- dplyr::mutate(cohort_pc, pop = args$ancestry)
   } else {
     message(sprintf("Loading --ancestry-file %s", args$ancestry_file))
     ancestry <-
@@ -157,7 +157,6 @@ main <- function(args)
       dplyr::rename(pop = !!as.symbol(args$ancestry_col)) %>%
       dplyr::select(id_cols, pop)
     projected_pc <- dplyr::left_join(projected_pc, ancestry)
-    # cohort_pc <- dplyr::left_join(cohort_pc, ancestry)
   }
 
   if (!is.null(args$sequenced)) {
@@ -168,18 +167,32 @@ main <- function(args)
     projected_pc <- dplyr::inner_join(projected_pc, seq)
   }
 
+  pops <- c("AFR", "AMR", "ASJ", "CSA", "EAS", "EUR", "FIN", "MDE", "MID", "NFE", "SAS")
   reference_score <- reference_score %>% mutate(IID = s, FID = s, pop = "Reference") %>% select(-s)
+  projected_pc <- projected_pc %>%  mutate(pop = ifelse(pop %in% pops, pop, "Remaining"))
   score_list <- list(reference = reference_score, projected = projected_pc)
   projected_pc <- data.table::rbindlist(score_list, use.names=TRUE, fill=TRUE)
-  projected_pc$pop <- factor(projected_pc$pop,
-    levels = c("AFR", "AMR", "ASJ", "CSA", "EAS", "EUR", "FIN", "MDE", "MID", "NFE", "SAS", "Reference"))
+  projected_pc$pop <- factor(projected_pc$pop, levels = c(pops, "Reference", "Remaining"))
 
   # Plot PC figures
   plot_all <- function(df, prefix, study, pc_num, reference_range = list()) {
     pcs <- paste0("PC", seq(pc_num))
-    pca <-
+    pca_pops_only <-
       Reduce(`+`, c(apply(matrix(pcs, ncol = 2, byrow = TRUE), 1, function(pc) {
-        plot_pca(df, pc[1], pc[2], "pop",
+        plot_pca(df %>% filter(pop != "Remaining"), pc[1], pc[2], "pop",
+          xlim = reference_range[[pc[1]]] * scaling_range_plot,
+          ylim = reference_range[[pc[2]]] * scaling_range_plot)
+      }), list(patchwork::guide_area()))) +
+      patchwork::plot_layout(ncol = 2, guides = "collect") +
+      patchwork::plot_annotation(
+        title = sprintf("%s (by ancestry): # samples = %d, # variants = %d",
+          study, nrow(df), n_sscore_vars),
+        theme = theme(plot.title = element_text(size = 8))
+      )
+
+    pca_no_ref <-
+      Reduce(`+`, c(apply(matrix(pcs, ncol = 2, byrow = TRUE), 1, function(pc) {
+        plot_pca(df %>% filter(pop != "Reference"), pc[1], pc[2], "pop",
           xlim = reference_range[[pc[1]]] * scaling_range_plot,
           ylim = reference_range[[pc[2]]] * scaling_range_plot)
       }), list(patchwork::guide_area()))) +
@@ -192,7 +205,7 @@ main <- function(args)
 
     pca_density <-
       Reduce(`+`, apply(matrix(pcs, ncol = 2, byrow = TRUE), 1, function(pc) {
-        plot_pca_density(df, pc[1], pc[2],
+        plot_pca_density(df %>% filter(pop != "Reference"), pc[1], pc[2],
           xlim = reference_range[[pc[1]]] * scaling_range_plot,
           ylim = reference_range[[pc[2]]] * scaling_range_plot) +
           theme(legend.position = "none")
@@ -203,10 +216,29 @@ main <- function(args)
         theme = theme(plot.title = element_text(size = 8))
       )
 
-    save_plots(pca, paste0(prefix, ".pca.ancestry"), pc_num)
+    pca_density_no_remaining <-
+      Reduce(`+`, apply(matrix(pcs, ncol = 2, byrow = TRUE), 1, function(pc) {
+        plot_pca_density(df %>% filter(!(pop %in% c("Reference", "Remaining"))), pc[1], pc[2],
+          xlim = reference_range[[pc[1]]] * scaling_range_plot,
+          ylim = reference_range[[pc[2]]] * scaling_range_plot) +
+          theme(legend.position = "none")
+      })) +
+      patchwork::plot_layout(ncol = 2) +
+      patchwork::plot_annotation(
+        title = sprintf("%s (density): # samples = %d, # variants = %d", study, nrow(df), n_sscore_vars),
+        theme = theme(plot.title = element_text(size = 8))
+      )
+
+    save_plots(pca_pops_only, paste0(prefix, ".pca.ancestry"), pc_num)
+    save_plots(pca_no_ref, paste0(prefix, ".pca.ancestry.no.ref"), pc_num)
     save_plots(
       pca_density,
       paste0(prefix, ".pca.density"),
+      pc_num
+    )
+    save_plots(
+      pca_density,
+      paste0(prefix, ".pca.pops.density"),
       pc_num
     )
   }
@@ -224,7 +256,7 @@ main <- function(args)
   if (!args$disable_export) {
     fname <- paste0(args$out, ".projected.pca.tsv.gz")
     message(paste("Removing individual IDs and exporting", fname))
-    dplyr::select(projected_pc, -id_cols) %>%
+    dplyr::select(projected_pc, -id_cols) %>% 
       data.table::fwrite(fname, sep = "\t")
   }
 
