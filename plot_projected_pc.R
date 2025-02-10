@@ -237,7 +237,7 @@ main <- function(args)
       pc_num
     )
     save_plots(
-      pca_density,
+      pca_density_no_remaining,
       paste0(prefix, ".pca.pops.density"),
       pc_num
     )
